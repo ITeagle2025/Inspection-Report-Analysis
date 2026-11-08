@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADPHC × Eagle — Inspection Point Report</title>
+<link rel="stylesheet" href="assets/vendor/leaflet.css">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<!-- ============ HEADER (logos are embedded assets, never altered) ============ -->
+<header class="app-header">
+  <div class="hlogo hl"><img id="logoAdphc" src="assets/logos/adphc-logo.png" alt="Abu Dhabi Public Health Centre (ADPHC)"></div>
+  <div class="htitle">
+    <h1>INSPECTION POINT REPORT</h1>
+    <p class="period">Reporting Period: <b id="periodLabel">—</b></p>
+    <p class="source"><span class="dot"></span>Source: <span id="sourceLabel">No file loaded</span></p>
+  </div>
+  <div class="hlogo hr"><img id="logoEagle" src="assets/logos/eagle-logo.png" alt="Eagle Environmental Services &amp; Pest Control"></div>
+</header>
+
+<!-- ============ NAV ============ -->
+<nav class="topnav" id="topnav" hidden>
+  <div class="tabs" role="tablist">
+    <button class="tab on" data-tab="dashboard" role="tab">Dashboard</button>
+    <button class="tab" data-tab="map" role="tab">Map</button>
+    <button class="tab" data-tab="analysis" role="tab">Analysis</button>
+    <button class="tab" data-tab="extraction" role="tab">Data Extraction</button>
+  </div>
+  <div class="navactions">
+    <button class="btn ghost" id="btnReport" type="button">Export Management Report</button>
+    <button class="btn primary" id="btnUpload" type="button">Upload New Excel</button>
+  </div>
+</nav>
+
+<main id="main">
+
+  <!-- ============ UPLOAD ============ -->
+  <section id="viewUpload" class="view">
+    <div class="dropzone" id="dropzone" tabindex="0">
+      <div class="dz-icon" aria-hidden="true">
+        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M12 17v-6"/><path d="m9.5 13 2.5-2.5 2.5 2.5"/></svg>
+      </div>
+      <h2>Upload the Inspection Point Excel report</h2>
+      <p>Drag &amp; drop the file here, or choose it from your computer. The file is processed in this browser only — nothing is uploaded to a server.</p>
+      <button class="btn primary big" id="btnChoose" type="button">Choose Excel file</button>
+      <small>.xlsx or .xls · the worksheet, header row and columns are detected automatically</small>
+    </div>
+    <ol class="flow" aria-label="Workflow">
+      <li>Upload</li><li>Validate</li><li>Detect period</li><li>Filter</li><li>KPIs &amp; charts</li><li>Map</li><li>Extract &amp; export</li>
+    </ol>
+  </section>
+  <input type="file" id="fileInput" accept=".xlsx,.xls,.xlsm" hidden>
+
+  <!-- ============ LOADING ============ -->
+  <section id="viewLoading" class="view" hidden>
+    <div class="loading card"><div class="spinner"></div><h2 id="loadTitle">Reading workbook…</h2><p id="loadStep">Parsing the Excel file in your browser. Large files can take 10–30 seconds.</p></div>
+  </section>
+
+  <!-- ============ ERROR ============ -->
+  <section id="viewError" class="view" hidden>
+    <div class="errorpanel card">
+      <h2 id="errTitle">Unable to generate report</h2>
+      <p class="errlabel">Reason</p><p id="errReason"></p>
+      <div id="errCodeWrap" hidden><code id="errCode"></code></div>
+      <div id="errSimWrap" hidden><p class="errlabel">Available similar columns</p><ul id="errSim"></ul></div>
+      <p class="errdetail" id="errDetail"></p>
+      <button class="btn primary" id="btnErrRetry" type="button">Upload another file</button>
+    </div>
+  </section>
+
+  <!-- ============ VALIDATION ============ -->
+  <section id="viewValidate" class="view" hidden>
+    <div class="card validate">
+      <h2>Data validation</h2>
+      <ul id="valList" class="vlist"></ul>
+      <div class="vactions"><button class="btn primary" id="btnContinue" type="button">Open dashboard</button><button class="btn ghost" id="btnValAnother" type="button">Upload another file</button></div>
+    </div>
+  </section>
+
+  <!-- ============ APP ============ -->
+  <section id="viewApp" class="view" hidden>
+
+    <!-- FILTERS -->
+    <section class="card filters" aria-label="Filters">
+      <div class="frow" id="filtersPrimary"></div>
+      <div class="frow more" id="filtersMore" hidden></div>
+      <div class="fbar">
+        <button class="btn link" id="btnMore" type="button" aria-expanded="false">+ More Filters</button>
+        <div class="fsummary">
+          <span class="showing" id="showingText"></span>
+          <span class="chips" id="chips"></span>
+        </div>
+        <div class="fright"><span class="rcount" id="recCount"></span><button class="btn ghost small" id="btnClearAll" type="button">Clear All Filters</button></div>
+      </div>
+    </section>
+
+    <!-- DASHBOARD -->
+    <div class="tabview" id="tab-dashboard">
+      <div class="kpis" id="kpis"></div>
+      <div class="grid2">
+        <section class="card findings"><h3 class="sechead">Key Findings</h3><ul id="findings"></ul></section>
+        <section class="card attention"><h3 class="sechead">Attention Required</h3><ul id="attention" class="attlist"></ul><p class="attnote" id="attNote"></p></section>
+      </div>
+      <section class="card trend">
+        <div class="chead"><div><h3 class="ctitle">Inspection &amp; infestation trend</h3><p class="csub">Two charts share the same time axis so each keeps its own scale</p></div>
+          <div class="seg" id="grainSeg" role="group" aria-label="Time grain"><button data-g="day" class="on">Daily</button><button data-g="week">Weekly</button><button data-g="month">Monthly</button></div></div>
+        <div data-chart="trend_insp" class="flat"></div>
+        <div data-chart="trend_inf" class="flat"></div>
+      </section>
+      <div class="grid2">
+        <div data-chart="opsurvey"></div>
+        <div class="card dashcol" id="dashSide"></div>
+      </div>
+      <div class="grid2">
+        <div data-chart="area_insp" data-limit="12"></div>
+        <div data-chart="area_inf" data-limit="12"></div>
+      </div>
+    </div>
+
+    <!-- MAP -->
+    <div class="tabview" id="tab-map" hidden>
+      <div class="maptools card">
+        <div class="seg" id="mapMode" role="group" aria-label="Map mode"><button data-m="points" class="on">Inspection Points</button><button data-m="infested">Infested Only</button><button data-m="heat">Infestation Heatmap</button></div>
+        <div class="seg" id="mapBase" role="group" aria-label="Basemap"><button data-b="light" class="on">Light</button><button data-b="street">Streets</button><button data-b="sat">Satellite</button></div>
+        <form id="mapSearchForm" class="msearch"><input id="mapSearch" type="search" placeholder="Find WO#, barcode or inspection point…"><button class="btn small ghost" type="submit">Find</button><span id="mapSearchMsg" class="mmsg"></span></form>
+        <span id="mapStats" class="mapstats"></span>
+      </div>
+      <div class="mapwrap"><div id="map"></div>
+        <div class="maplegend"><span><i class="lg" style="background:#003060"></i>Inspected (not infested)</span><span><i class="lg" style="background:#E0572F"></i>Infested</span><span><i class="lg" style="background:#B0693F"></i>Cluster with infested points</span><small>Clusters re-group as you zoom; click a cluster to zoom in, click a point for details. Filters above apply to the map.</small></div>
+      </div>
+    </div>
+
+    <!-- ANALYSIS -->
+    <div class="tabview" id="tab-analysis" hidden>
+      <div class="subnav" id="subnav">
+        <button data-s="area" class="on">Area</button><button data-s="sector">Sector</button><button data-s="team">Team</button><button data-s="pest">Pest / Infestation</button><button data-s="trends">Trends</button><button data-s="quality">Data Quality</button>
+      </div>
+      <div class="subview" id="sub-area"></div>
+      <div class="subview" id="sub-sector" hidden></div>
+      <div class="subview" id="sub-team" hidden></div>
+      <div class="subview" id="sub-pest" hidden></div>
+      <div class="subview" id="sub-trends" hidden></div>
+      <div class="subview" id="sub-quality" hidden></div>
+    </div>
+
+    <!-- EXTRACTION -->
+    <div class="tabview" id="tab-extraction" hidden>
+      <section class="card ext">
+        <div class="exthead">
+          <div class="extcount" id="extCount"></div>
+          <div class="extactions">
+            <div class="fdd colpick"><button type="button" class="btn ghost small" id="btnCols">Columns ▾</button>
+              <div class="fpanel" id="colPanel" hidden><div class="factions"><button type="button" id="colAll">All</button><button type="button" id="colDefault">Default</button><button type="button" id="colNone">None</button></div><div class="flist" id="colList"></div></div></div>
+            <label class="chk"><input type="checkbox" id="expAll"> Export all columns</label>
+            <button class="btn primary small" id="btnXlsx" type="button">Export Filtered Excel</button>
+            <button class="btn ghost small" id="btnCsv" type="button">Export CSV</button>
+          </div>
+        </div>
+        <div class="tablewrap"><table id="extTable" class="data"></table></div>
+        <div class="pager">
+          <button id="pgFirst" class="btn ghost small" type="button">« First</button><button id="pgPrev" class="btn ghost small" type="button">‹ Prev</button>
+          <span id="pgInfo"></span>
+          <button id="pgNext" class="btn ghost small" type="button">Next ›</button><button id="pgLast" class="btn ghost small" type="button">Last »</button>
+          <label class="psize">Rows per page <select id="pgSize"><option>50</option><option selected>100</option><option>250</option><option>500</option></select></label>
+        </div>
+      </section>
+    </div>
+
+  </section>
+</main>
+
+<footer class="app-footer" id="appFooter" hidden>
+  <span id="footSource"></span><span id="footPeriod"></span><span id="footGen"></span>
+</footer>
+
+<script src="assets/vendor/xlsx.full.min.js"></script>
+<script src="assets/vendor/chart.umd.js"></script>
+<script src="assets/vendor/leaflet.js"></script>
+<script src="assets/vendor/leaflet-heat.js"></script>
+<script src="js/config.js"></script>
+<script src="js/period.js"></script>
+<script src="js/loader.js"></script>
+<script src="js/normalize.js"></script>
+<script src="js/validate.js"></script>
+<script src="js/filters.js"></script>
+<script src="js/analytics.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/map.js"></script>
+<script src="js/table.js"></script>
+<script src="js/export.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
