@@ -146,7 +146,7 @@
         const dates = Array.from(dm).sort((a, b) => b[0] - a[0]);
         h += '<div class="obscard"><button type="button" class="obstoggle" data-tg="o' + si + '_' + oi + '"><span>' + F.esc(o.name) + '</span><b>' + F.int(o.rows.length) + '</b></button><div class="obsdates" id="o' + si + '_' + oi + '" hidden>';
         dates.forEach(([d, items2], di) => {
-          const tc = new Map(); items2.forEach(i => { if (!isNaN(ds.ts[i])) { const t = U.isoTime(ds.ts[i]).slice(11, 19); tc.set(t, (tc.get(t) || 0) + 1); } });
+          const tc = new Map(); items2.forEach(i => { if (!isNaN(ds.ts[i])) { const t = U.isoTime(ds.ts[i]).slice(11, 16); tc.set(t, (tc.get(t) || 0) + 1); } });
           h += '<div class="daterow"><button type="button" class="datetoggle" data-tg="d' + si + '_' + oi + '_' + di + '"><span>' + (d >= 0 ? U.dayLong(d) : 'Date unavailable') + '</span><span>' + F.int(items2.length) + ' records ⌄</span></button><div class="datetimes" id="d' + si + '_' + oi + '_' + di + '" hidden>' +
             (tc.size ? Array.from(tc).sort((a, b) => a[0].localeCompare(b[0])).map(([t, c]) => '<div class="timeline"><span>' + t + '</span><b>' + c + '</b></div>').join('') : '<div class="timeline"><span>Scanned time unavailable</span><b>' + items2.length + '</b></div>') + '</div></div>';
         });
