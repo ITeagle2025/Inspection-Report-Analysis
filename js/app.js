@@ -39,7 +39,7 @@
   }
   function resetAll() {
     // clear every trace of a previous dataset
-    IPR.Charts.destroyAll(); IPR.Map.reset(); App.ds = null; App.validation = null; App.dirty = {};
+    IPR.Charts.destroyAll(); IPR.Map.reset(); App.ds = null; App.validation = null; App.dirty = {}; IPR.Obs.reset();
     document.querySelectorAll('[data-chart]').forEach(el => { el.innerHTML = ''; delete el.dataset.built; el.classList.remove('card', 'chartcard'); el.id = ''; });
     ['sub-area', 'sub-sector', 'sub-team', 'sub-pest', 'sub-trends', 'sub-quality'].forEach(id => $(id).innerHTML = '');
     $('periodLabel').textContent = '—'; $('sourceLabel').textContent = 'No file loaded'; $('findings').innerHTML = ''; $('attention').innerHTML = ''; $('kpis').innerHTML = '';
@@ -60,7 +60,8 @@
     $('footSource').textContent = 'Data source: ' + ds.fileName; $('footPeriod').textContent = 'Reporting period: ' + ds.period.label; $('footGen').textContent = 'Generated ' + new Date().toISOString().slice(0, 10);
     document.querySelector('[data-tab="map"]').disabled = !ds.hasCoords;
     document.querySelector('[data-tab="map"]').title = ds.hasCoords ? '' : 'No Latitude/Longitude columns in this file';
-    App.dirty = { dashboard: 1, map: 1, analysis: 1, extraction: 1 }; App.mapFit = true;
+    App.dirty = { dashboard: 1, map: 1, analysis: 1, observation: 1, extraction: 1 }; App.mapFit = true;
+    const ot = document.querySelector('[data-tab="observation"]'); ot.disabled = !IPR.Obs.available(ds); ot.title = ot.disabled ? 'Needs Team and Observation columns' : '';
     switchTab('dashboard');
     updateSummary();
   }
@@ -79,6 +80,7 @@
     if (t === 'dashboard') renderDashboard(ds);
     else if (t === 'map') { IPR.Map.init($('map')); IPR.Map.update(ds, App.mapFit); App.mapFit = false; }
     else if (t === 'analysis') renderAnalysis(ds);
+    else if (t === 'observation') IPR.Obs.render($('obsHost'), ds);
     else if (t === 'extraction') IPR.Table.render(ds);
   }
 
@@ -94,7 +96,7 @@
 
   function onFiltersChanged() {
     const ds = App.ds; if (!ds) return;
-    IPR.Table.invalidate(); App.dirty = { dashboard: 1, map: 1, analysis: 1, extraction: 1 };
+    IPR.Table.invalidate(); App.dirty = { dashboard: 1, map: 1, analysis: 1, observation: 1, extraction: 1 };
     updateSummary(); renderActive();
   }
 
@@ -193,7 +195,7 @@
     $('btnMore').addEventListener('click', () => { const open = $('filtersMore').hidden; $('filtersMore').hidden = !open; $('btnMore').textContent = open ? '− Fewer Filters' : '+ More Filters'; $('btnMore').setAttribute('aria-expanded', open); });
     $('chips').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; const k = b.dataset.k; if (k === 'scannedAt' || b.dataset.c === 'all') IPR.Filters.clearOne(k); else IPR.Filters.removeValue(k, +b.dataset.c); });
     document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => switchTab(b.dataset.tab)));
-    $('btnReport').addEventListener('click', async () => { $('btnReport').disabled = true; $('btnReport').textContent = 'Preparing…'; try { await IPR.Export.managementReport(App.ds); } finally { $('btnReport').disabled = false; $('btnReport').textContent = 'Export Management Report'; } });
+    $('btnExport').addEventListener('click', () => IPR.Export.openModal(App.ds));
 
     // grain toggles (dashboard + analysis trends)
     document.addEventListener('click', e => {

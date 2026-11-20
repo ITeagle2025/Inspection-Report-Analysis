@@ -86,7 +86,8 @@
     const LIMIT = 250; let q = '';
     const sel = () => Filters.state[k];
 
-    function matches() { const ql = q.toLowerCase(); const r = []; for (let i = 0; i < d.values.length; i++) if (!ql || d.values[i].toLowerCase().includes(ql)) r.push(i); return r; }
+    function teamRank(v) { const m = v.match(/^\s*S\s*(\d+)\b/i); return m ? +m[1] : 1000; }
+    function matches() { const ql = q.toLowerCase(); const r = []; for (let i = 0; i < d.values.length; i++) if (!ql || d.values[i].toLowerCase().includes(ql)) r.push(i); if (k === 'team') r.sort((a, b) => teamRank(d.values[a]) - teamRank(d.values[b]) || d.values[a].localeCompare(d.values[b], 'en', { numeric: true })); return r; }
     function renderList() {
       const m = matches(), shown = m.slice(0, LIMIT);
       list.innerHTML = shown.map(c => '<label class="fopt"><input type="checkbox" data-c="' + c + '"' + (sel().has(c) ? ' checked' : '') + '><span class="fotxt" title="' + F.esc(d.values[c]) + '">' + F.esc(d.values[c]) + '</span><span class="fon">' + F.int(d.counts[c]) + '</span></label>').join('') +

@@ -26,10 +26,11 @@
     <button class="tab on" data-tab="dashboard" role="tab">Dashboard</button>
     <button class="tab" data-tab="map" role="tab">Map</button>
     <button class="tab" data-tab="analysis" role="tab">Analysis</button>
+    <button class="tab" data-tab="observation" role="tab">Observation Report</button>
     <button class="tab" data-tab="extraction" role="tab">Data Extraction</button>
   </div>
   <div class="navactions">
-    <button class="btn ghost" id="btnReport" type="button">Export Management Report</button>
+    <button class="btn ghost" id="btnExport" type="button">⬇ Export…</button>
     <button class="btn primary" id="btnUpload" type="button">Upload New Excel</button>
   </div>
 </nav>
@@ -123,12 +124,12 @@
     <div class="tabview" id="tab-map" hidden>
       <div class="maptools card">
         <div class="seg" id="mapMode" role="group" aria-label="Map mode"><button data-m="points" class="on">Inspection Points</button><button data-m="infested">Infested Only</button><button data-m="heat">Infestation Heatmap</button></div>
-        <div class="seg" id="mapBase" role="group" aria-label="Basemap"><button data-b="light" class="on">Light</button><button data-b="street">Streets</button><button data-b="sat">Satellite</button></div>
+        <div class="seg" id="mapBase" role="group" aria-label="Basemap"><button data-b="dark" class="on">Dark</button><button data-b="light">Light</button><button data-b="street">Streets</button><button data-b="sat">Satellite</button></div>
         <form id="mapSearchForm" class="msearch"><input id="mapSearch" type="search" placeholder="Find WO#, barcode or inspection point…"><button class="btn small ghost" type="submit">Find</button><span id="mapSearchMsg" class="mmsg"></span></form>
         <span id="mapStats" class="mapstats"></span>
       </div>
       <div class="mapwrap"><div id="map"></div>
-        <div class="maplegend"><span><i class="lg" style="background:#003060"></i>Inspected (not infested)</span><span><i class="lg" style="background:#E0572F"></i>Infested</span><span><i class="lg" style="background:#B0693F"></i>Cluster with infested points</span><small>Clusters re-group as you zoom; click a cluster to zoom in, click a point for details. Filters above apply to the map.</small></div>
+        <div class="maplegend"><span><i class="lg" style="background:#4F9DEB"></i>Inspected (not infested)</span><span><i class="lg" style="background:#FF6B3D"></i>Infested</span><span><i class="lg" style="background:#E08A4A"></i>Cluster with infested points</span><small>Clusters re-group as you zoom; click a cluster to zoom in, click a point for details. Filters above apply to the map.</small></div>
       </div>
     </div>
 
@@ -144,6 +145,9 @@
       <div class="subview" id="sub-trends" hidden></div>
       <div class="subview" id="sub-quality" hidden></div>
     </div>
+
+    <!-- OBSERVATION REPORT -->
+    <div class="tabview" id="tab-observation" hidden><div id="obsHost"></div></div>
 
     <!-- EXTRACTION -->
     <div class="tabview" id="tab-extraction" hidden>
@@ -171,11 +175,22 @@
   </section>
 </main>
 
+<!-- EXPORT LIST -->
+<div class="modal" id="exportModal" hidden>
+  <div class="modalbox" role="dialog" aria-modal="true" aria-labelledby="expTitle">
+    <div class="mhead"><h2 id="expTitle">Export</h2><button class="mclose" id="expClose" type="button" aria-label="Close">×</button></div>
+    <p class="msub">Tick one or more exports. Everything follows the filters currently applied (<b id="expCount"></b> records).</p>
+    <div class="explist" id="expList"></div>
+    <div class="mfoot"><button class="btn link" id="expAll" type="button">Select all</button><button class="btn link" id="expNone" type="button">Clear</button><span id="expStatus" class="expstatus"></span><button class="btn primary" id="expRun" type="button" disabled>Export selected</button></div>
+  </div>
+</div>
+
 <footer class="app-footer" id="appFooter" hidden>
   <span id="footSource"></span><span id="footPeriod"></span><span id="footGen"></span>
 </footer>
 
 <script src="assets/vendor/xlsx.full.min.js"></script>
+<script src="assets/vendor/exceljs.min.js"></script>
 <script src="assets/vendor/chart.umd.js"></script>
 <script src="assets/vendor/leaflet.js"></script>
 <script src="assets/vendor/leaflet-heat.js"></script>
@@ -189,6 +204,7 @@
 <script src="js/charts.js"></script>
 <script src="js/map.js"></script>
 <script src="js/table.js"></script>
+<script src="js/obsreport.js"></script>
 <script src="js/export.js"></script>
 <script src="js/app.js"></script>
 </body>

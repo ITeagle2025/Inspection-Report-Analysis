@@ -81,6 +81,11 @@ IPR.CONFIG = {
   }
 };
 
+IPR.UI = {  // on-screen futuristic (dark) palette derived from the logo colours
+  blue: '#4F9DEB', teal: '#1CC8D8', green: '#27D17F', alert: '#FF6B3D', gray: '#8FA3B8',
+  ink: '#E6F1FF', muted: '#8FA8C2', grid: 'rgba(120,170,220,0.16)', tipBg: '#0A2342', sep: '#0A2342'
+};
+
 IPR.fmt = {
   int: n => (n == null || isNaN(n)) ? '—' : Math.round(n).toLocaleString('en-US'),
   pct: (n, d = 2) => (n == null || isNaN(n)) ? 'n/a' : n.toFixed(d) + '%',

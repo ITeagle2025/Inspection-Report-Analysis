@@ -100,4 +100,40 @@
     const w = window.open(url, '_blank');
     if (!w) download(blob, 'ADPHC_Eagle_Management_Report_' + per.file + '.html');
   };
+
+  /* ---------------- export list (checkbox modal) ---------------- */
+  const OPTIONS = [
+    { id: 'pivot',   group: 'Observation Report', title: 'Pivot Table — Area 1–5', desc: 'Observation hierarchy per area (Excel sheet “PIVOT TABLE”)', needs: 'obs' },
+    { id: 'survey',  group: 'Observation Report', title: 'Survey — S1–S8', desc: 'Observation hierarchy for survey teams (Excel sheet “SURVEY”)', needs: 'obs' },
+    { id: 'overall', group: 'Observation Report', title: 'Overall Areas', desc: 'Area + Sector + Observation counts (Excel sheet “Overall Areas”)', needs: 'obs' },
+    { id: 'xlsx',    group: 'Filtered records', title: 'Filtered records — Excel', desc: 'Every record matching the filters, selected columns, with a Report Info sheet' },
+    { id: 'csv',     group: 'Filtered records', title: 'Filtered records — CSV', desc: 'Same records as plain CSV' },
+    { id: 'report',  group: 'Management report', title: 'Management report — PDF', desc: 'Branded one-document summary (opens a page: Print / Save as PDF)' }
+  ];
+  Ex.openModal = function (ds) {
+    const $ = id => document.getElementById(id), obsOk = IPR.Obs.available(ds);
+    let lastGroup = '';
+    $('expList').innerHTML = OPTIONS.map(o => { const dis = o.needs === 'obs' && !obsOk; const head = o.group !== lastGroup ? '<div class="expgroup">' + o.group + '</div>' : ''; lastGroup = o.group;
+      return head + '<label class="expopt' + (dis ? ' off' : '') + '"><input type="checkbox" data-x="' + o.id + '"' + (dis ? ' disabled' : '') + '><span><b>' + o.title + '</b><small>' + (dis ? 'Needs Team and Observation columns' : o.desc) + '</small></span></label>'; }).join('');
+    $('expCount').textContent = F.int(ds.idx.length); $('expStatus').textContent = ''; $('exportModal').hidden = false;
+    const boxes = () => Array.from($('expList').querySelectorAll('input:not(:disabled)'));
+    const sync = () => { const n = boxes().filter(b => b.checked).length; $('expRun').disabled = !n; $('expRun').textContent = n ? 'Export ' + n + ' selected' : 'Export selected'; };
+    $('expList').onchange = sync; sync();
+    $('expAll').onclick = () => { boxes().forEach(b => b.checked = true); sync(); };
+    $('expNone').onclick = () => { boxes().forEach(b => b.checked = false); sync(); };
+    const close = () => { $('exportModal').hidden = true; };
+    $('expClose').onclick = close; $('exportModal').onclick = e => { if (e.target.id === 'exportModal') close(); };
+    $('expRun').onclick = async () => {
+      const sel = {}; boxes().forEach(b => { if (b.checked) sel[b.dataset.x] = true; });
+      const run = $('expRun'); run.disabled = true; const done = [], st = t => $('expStatus').textContent = t, pause = () => new Promise(r => setTimeout(r, 400));
+      try {
+        if (sel.report) { st('Preparing management report…'); await Ex.managementReport(ds); done.push('Management report'); await pause(); }
+        if (sel.pivot || sel.survey || sel.overall) { st('Building observation workbook…'); await new Promise(r => setTimeout(r, 30)); const n = await IPR.Obs.exportWorkbook(ds, sel); done.push(n); await pause(); }
+        if (sel.xlsx) { st('Building filtered Excel…'); await new Promise(r => setTimeout(r, 30)); Ex.excel(ds, false); done.push('Filtered Excel'); await pause(); }
+        if (sel.csv) { st('Building CSV…'); Ex.csv(ds, false); done.push('Filtered CSV'); }
+        st('✓ Done: ' + done.join(' · '));
+      } catch (e) { console.error(e); st('Export failed: ' + (e && e.message || e)); }
+      finally { run.disabled = false; }
+    };
+  };
 })();

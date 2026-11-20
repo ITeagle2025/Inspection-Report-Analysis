@@ -14,7 +14,7 @@
     id: 'barLabels',
     afterDatasetsDraw(chart, args, opts) {
       if (!opts || opts.display === false) return;
-      const ctx = chart.ctx; ctx.save(); ctx.font = '600 11px Inter, system-ui, sans-serif'; ctx.fillStyle = K.ink; ctx.textBaseline = 'middle';
+      const ctx = chart.ctx; ctx.save(); ctx.font = '600 11px Inter, system-ui, sans-serif'; ctx.fillStyle = opts.color || K.ink; ctx.textBaseline = 'middle';
       chart.data.datasets.forEach((ds, di) => {
         const meta = chart.getDatasetMeta(di); if (meta.hidden) return;
         meta.data.forEach((bar, i) => {
@@ -58,14 +58,16 @@
   /* ---------------- rendering ---------------- */
   Chart.defaults.font.family = 'Inter, system-ui, sans-serif'; Chart.defaults.color = K.muted; Chart.defaults.font.size = 11;
 
-  function configFor(spec) {
+  function configFor(spec, theme) {
+    const UI = IPR.UI, dark = theme !== 'light';
+    const T = dark ? { ink: UI.ink, muted: UI.muted, grid: UI.grid, tip: UI.tipBg, sep: UI.sep, col: c => ({ [K.adphc]: UI.blue, [K.teal]: UI.teal, [K.green]: UI.green, [K.alert]: UI.alert, [K.gray]: UI.gray })[c] || c } : { ink: K.ink, muted: K.muted, grid: K.grid, tip: '#fff', sep: '#fff', col: c => c };
     const horizontal = spec.kind === 'hbar';
     const cfg = {
       type: 'bar',
       data: {
         labels: spec.labels,
         datasets: spec.series.map(s => ({
-          label: s.name, data: s.data, labels: s.labels, backgroundColor: s.color, borderColor: '#fff', borderWidth: spec.kind === 'groups' ? 2 : 0,
+          label: s.name, data: s.data, labels: s.labels, backgroundColor: T.col(s.color), borderColor: T.sep, borderWidth: spec.kind === 'groups' ? 2 : 0,
           borderRadius: { topLeft: 4, topRight: 4, bottomLeft: 0, bottomRight: 0 }, borderSkipped: 'bottom',
           barThickness: horizontal ? 14 : undefined, maxBarThickness: spec.kind === 'groups' ? 34 : 26, categoryPercentage: spec.kind === 'groups' ? 0.7 : 0.8, barPercentage: 0.9
         }))
@@ -74,19 +76,19 @@
         indexAxis: horizontal ? 'y' : 'x', responsive: true, maintainAspectRatio: false, animation: { duration: 250 },
         layout: { padding: { right: horizontal ? 90 : 6, top: horizontal ? 0 : 18 } },
         plugins: {
-          legend: { display: spec.series.length > 1, position: 'top', align: 'end', labels: { boxWidth: 10, boxHeight: 10, usePointStyle: true, pointStyle: 'rectRounded', color: K.ink } },
+          legend: { display: spec.series.length > 1, position: 'top', align: 'end', labels: { boxWidth: 10, boxHeight: 10, usePointStyle: true, pointStyle: 'rectRounded', color: T.ink } },
           tooltip: {
-            backgroundColor: '#fff', titleColor: K.ink, bodyColor: K.ink, borderColor: K.grid, borderWidth: 1, padding: 10, boxPadding: 4,
+            backgroundColor: T.tip, titleColor: T.ink, bodyColor: T.ink, borderColor: T.grid, borderWidth: 1, padding: 10, boxPadding: 4,
             callbacks: { label: c => ' ' + c.dataset.label + ': ' + (c.dataset.labels ? c.dataset.labels[c.dataIndex] : (spec.fmtTable ? spec.fmtTable(c.parsed[horizontal ? 'x' : 'y']) : F.int(c.parsed[horizontal ? 'x' : 'y']))) }
           },
-          barLabels: { display: spec.kind !== 'vbar' || spec.labels.length <= 16 }
+          barLabels: { display: spec.kind !== 'vbar' || spec.labels.length <= 16, color: T.ink }
         },
         scales: horizontal ? {
-          x: { beginAtZero: true, grid: { color: K.grid, drawBorder: false }, border: { display: false }, ticks: { callback: v => F.int(v), maxRotation: 0, maxTicksLimit: 6 } },
-          y: { grid: { display: false }, border: { color: K.grid }, ticks: { color: K.ink, autoSkip: false, callback(v) { const l = this.getLabelForValue(v); return l.length > 30 ? l.slice(0, 29) + '…' : l; } } }
+          x: { beginAtZero: true, grid: { color: T.grid, drawBorder: false }, border: { display: false }, ticks: { color: T.muted, callback: v => F.int(v), maxRotation: 0, maxTicksLimit: 6 } },
+          y: { grid: { display: false }, border: { color: T.grid }, ticks: { color: T.ink, autoSkip: false, callback(v) { const l = this.getLabelForValue(v); return l.length > 30 ? l.slice(0, 29) + '…' : l; } } }
         } : {
-          x: { grid: { display: false }, border: { color: K.grid }, ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 16 } },
-          y: { beginAtZero: true, grid: { color: K.grid }, border: { display: false }, ticks: { callback: v => F.int(v), maxTicksLimit: 5 } }
+          x: { grid: { display: false }, border: { color: T.grid }, ticks: { color: T.muted, maxRotation: 0, autoSkip: true, maxTicksLimit: 16 } },
+          y: { beginAtZero: true, grid: { color: T.grid }, border: { display: false }, ticks: { color: T.muted, callback: v => F.int(v), maxTicksLimit: 5 } }
         }
       },
       plugins: [barLabels]
@@ -142,7 +144,7 @@
     const h = spec.height || (spec.kind === 'hbar' ? Math.max(90, spec.labels.length * 24 + 30) : 220), w = (opts && opts.w) || 720;
     const div = document.createElement('div'); div.style.cssText = 'position:fixed;left:-9999px;top:0;width:' + w + 'px;height:' + h + 'px;';
     const cv = document.createElement('canvas'); div.appendChild(cv); document.body.appendChild(div);
-    const cfg = configFor(spec); cfg.options.animation = false; cfg.options.devicePixelRatio = 2;
+    const cfg = configFor(spec, 'light'); cfg.options.animation = false; cfg.options.devicePixelRatio = 2;
     const ch = new Chart(cv, cfg); const url = ch.toBase64Image('image/png', 1); ch.destroy(); div.remove();
     return { url, spec, w, h };
   };

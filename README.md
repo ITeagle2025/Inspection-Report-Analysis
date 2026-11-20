@@ -55,12 +55,16 @@ The unique **Scanned At dates** are sorted and split into segments wherever two 
 
 The header shows the period of the *current selection*; exports use the period of the *exported records*.
 
+## 7b. Observation Report tab
+Ported from the standalone *Inspection Points Report Generator*. It reuses the loaded data and follows the global filters. Sub-tabs: Overall Areas, Area 1…n (teams starting `A<n>`), Survey (teams starting `S<n>`) and Other Teams — all detected from the Team text, so new areas/surveys appear automatically. Pivot hierarchy = Program › Area › Team › Observation (counts = records). Click a team to open sector cards → observations → scan dates → scan times. Report date = Work Order Date (falls back to Scanned At).
+
 ## 8. Exports
+Click **⬇ Export…** (top right) to open the export list. Tick one or more: Observation Report (Pivot Table, Survey, Overall Areas — combined into ONE Excel workbook, one sheet each), Filtered records (Excel, CSV), Management report (PDF page). Your browser may ask permission to download multiple files.
 * **Export Filtered Excel / CSV** (Data Extraction tab) — only records matching the filters, selected columns (or all with *Export all columns*), original values; dates are real Excel dates. The Excel has a *Report Info* sheet (period, filters, totals).
 * **Export Management Report** — a branded report (logos, KPIs, trend, Operation vs Survey, Top 10 Areas/Sectors by Inspected and by Infestation Rate, Target Pest infested counts, fixed point map on an Esri basemap with area names, findings, plain-language attention items; no data-quality section) that opens in a new tab: use **Print / Save as PDF**.
 
 ## 9. Replace logos
-Overwrite `assets/logos/adphc-logo.png` and `assets/logos/eagle-logo.png` with the new official artwork (keep file names; PNG with transparent background). They are displayed with fixed aspect ratio — never stretched or recoloured. Brand colours are in `js/config.js` (`COLORS`) and `css/styles.css` (`:root`).
+The screen design is dark/futuristic (logos sit on white plates, unaltered); the PDF report stays light. Overwrite `assets/logos/adphc-logo.png` and `assets/logos/eagle-logo.png` with the new official artwork (keep file names; PNG with transparent background). They are displayed with fixed aspect ratio — never stretched or recoloured. Brand colours are in `js/config.js` (`COLORS`) and `css/styles.css` (`:root`).
 
 ## 10. Maintenance map
 | File | Responsibility |
@@ -75,7 +79,8 @@ Overwrite `assets/logos/adphc-logo.png` and `assets/logos/eagle-logo.png` with t
 | `js/charts.js` | Chart specs + Chart.js renderer (with table view) |
 | `js/map.js` | Leaflet map, viewport clustering, heatmap, search |
 | `js/table.js` | Paginated, sortable, column-selectable extraction table |
-| `js/export.js` | Excel, CSV, management report |
+| `js/obsreport.js` | Observation Report tab + its Excel export (ExcelJS) |
+| `js/export.js` | Excel, CSV, management report, export list window |
 | `js/app.js` | Tabs, views, wiring |
 
 **Performance:** columnar typed arrays; only one page of table rows exists in the DOM; the map renders a few hundred clustered canvas markers instead of 70,000; aggregates are memoised per filter change.

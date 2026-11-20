@@ -8,6 +8,7 @@
   const K = IPR.CONFIG.COLORS, F = IPR.fmt;
   const M = IPR.Map = { map: null, mode: 'points', layer: null, heat: null, ds: null };
   const BASEMAPS = {
+    dark: ['https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', 'Esri World Dark Gray'],
     light: ['https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', 'Esri World Light Gray'],
     street: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', 'Esri World Street Map'],
     sat: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', 'Esri World Imagery']
@@ -16,7 +17,7 @@
   M.init = function (el) {
     if (M.map) return;
     M.map = L.map(el, { preferCanvas: true, zoomControl: true, minZoom: 8, maxZoom: 19 }).setView([24.35, 54.55], 10);
-    M.setBase('light');
+    M.setBase('dark');
     M.renderer = L.canvas({ padding: 0.5 });
     M.layer = L.layerGroup().addTo(M.map);
     M.map.on('moveend zoomend', () => M.draw());
@@ -61,7 +62,7 @@
     if (M.mode === 'heat') {
       const arr = []; for (let j = 0; j < pts.length; j++) { const i = pts[j]; if (ds.infested[i]) arr.push([ds.lat[i], ds.lng[i], 1]); }
       if (!arr.length || !M.map.getSize().x) return;
-      M.heat = L.heatLayer(arr, { radius: 18, blur: 20, maxZoom: 15, minOpacity: 0.35, gradient: { 0.2: '#9ad3da', 0.45: '#0890A0', 0.7: '#E8A33C', 1: '#E0572F' } }).addTo(M.map);
+      M.heat = L.heatLayer(arr, { radius: 18, blur: 20, maxZoom: 15, minOpacity: 0.35, gradient: { 0.2: '#1CC8D8', 0.45: '#27D17F', 0.7: '#F2B84B', 1: '#FF6B3D' } }).addTo(M.map);
       return;
     }
 
@@ -85,9 +86,9 @@
     const MAX_SINGLE = 1500;
     cells.forEach(c => {
       if (c.n === 1) { single.push(c.first); return; }
-      const rate = c.inf / c.n, col = c.inf === 0 ? K.adphc : (rate >= 0.1 ? K.alert : '#B0693F');
+      const rate = c.inf / c.n, col = c.inf === 0 ? IPR.UI.blue : (rate >= 0.1 ? IPR.UI.alert : '#E08A4A');
       const r = sizeFor(c.n);
-      const mk = L.circleMarker([c.sla / c.n, c.sln / c.n], { renderer: M.renderer, radius: r, color: '#fff', weight: 2, fillColor: col, fillOpacity: 0.85 });
+      const mk = L.circleMarker([c.sla / c.n, c.sln / c.n], { renderer: M.renderer, radius: r, color: '#0A2342', weight: 2, fillColor: col, fillOpacity: 0.9 });
       mk.bindTooltip(F.int(c.n) + ' points · ' + F.int(c.inf) + ' infested', { direction: 'top' });
       mk.on('click', () => M.map.fitBounds([[c.la0, c.ln0], [c.la1, c.ln1]], { padding: [40, 40], maxZoom: 18 }));
       mk.addTo(M.layer);
@@ -97,7 +98,7 @@
     if (single.length > MAX_SINGLE) { single = single.slice(0, MAX_SINGLE); }
     single.forEach(i => {
       const inf = ds.infested[i];
-      const mk = L.circleMarker([ds.lat[i], ds.lng[i]], { renderer: M.renderer, radius: inf ? 6 : 4.5, color: '#fff', weight: 1.5, fillColor: inf ? K.alert : K.adphc, fillOpacity: 0.95 });
+      const mk = L.circleMarker([ds.lat[i], ds.lng[i]], { renderer: M.renderer, radius: inf ? 6 : 4.5, color: '#0A2342', weight: 1.5, fillColor: inf ? IPR.UI.alert : IPR.UI.blue, fillOpacity: 0.95 });
       mk.bindPopup(() => M.popup(i), { maxWidth: 320 });
       mk.addTo(M.layer);
     });
