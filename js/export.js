@@ -103,9 +103,17 @@
 
   /* ---------------- export list (checkbox modal) ---------------- */
   const OPTIONS = [
-    { id: 'pivot',   group: 'Observation Report', title: 'Pivot Table — Area 1–5', desc: 'Observation hierarchy per area (Excel sheet “PIVOT TABLE”)', needs: 'obs' },
-    { id: 'survey',  group: 'Observation Report', title: 'Survey — S1–S8', desc: 'Observation hierarchy for survey teams (Excel sheet “SURVEY”)', needs: 'obs' },
-    { id: 'overall', group: 'Observation Report', title: 'Overall Areas', desc: 'Area + Sector + Observation counts (Excel sheet “Overall Areas”)', needs: 'obs' },
+    { id: 'pivot',   group: 'Observation Report', title: 'Area 1–5', desc: 'One sheet per area: Program › Area › Team (flag counts, hours) › Observation + map links', needs: 'obs' },
+    { id: 'survey',  group: 'Observation Report', title: 'Survey — S1–S8', desc: 'Same layout for survey teams (sheet “SURVEY”)', needs: 'obs' },
+    { id: 'overall', group: 'Observation Report', title: 'Overall Areas', desc: 'By Program: Area, Sector, Observation, Value Count, Infestation Count', needs: 'obs' },
+    { id: 'geoinf', group: 'Observation Report — extras', title: 'Geotags — infestations', desc: 'Every infested point with latitude/longitude and a clickable map link', needs: 'obs' },
+    { id: 'geoall',  group: 'Observation Report — extras', title: 'Geotags — all inspections', desc: 'All inspection points with map links (large file)', needs: 'obs' },
+    { id: 'report', group: 'Observation Report', title: 'Overall Areas — Report Style', desc: 'One sheet per program: Area Name | Sector | Date × observation (Value Count | Infestation Count | Infested Target Pest)', needs: 'obs' },
+    { id: 'hours',  group: 'Observation Report — extras', title: 'Team hours in system', desc: 'Per team (total, average, per day) and per sector with first/last scan, gap and area/program details', needs: 'obs' },
+    { id: 'flags',   group: 'Observation Report — extras', title: 'All flags', desc: 'Every flag in one sheet: No chemical, No photos, Multi-observation', needs: 'obs' },
+    { id: 'timing',  group: 'Observation Report — extras', title: 'Sector timing', desc: 'First/last scan, time in sector, gap to next sector per team, day and sector', needs: 'obs' },
+    { id: 'photos',  group: 'Observation Report — extras', title: 'Sector photos', desc: 'Clickable photo links per team, day and sector', needs: 'obs' },
+    { id: 'multi',   group: 'Observation Report — extras', title: 'Multi-observation records', desc: 'Records with several observations in one cell (mistakes)', needs: 'obs' },
     { id: 'xlsx',    group: 'Filtered records', title: 'Filtered records — Excel', desc: 'Every record matching the filters, selected columns, with a Report Info sheet' },
     { id: 'csv',     group: 'Filtered records', title: 'Filtered records — CSV', desc: 'Same records as plain CSV' },
     { id: 'report',  group: 'Management report', title: 'Management report — PDF', desc: 'Branded one-document summary (opens a page: Print / Save as PDF)' }
@@ -128,7 +136,7 @@
       const run = $('expRun'); run.disabled = true; const done = [], st = t => $('expStatus').textContent = t, pause = () => new Promise(r => setTimeout(r, 400));
       try {
         if (sel.report) { st('Preparing management report…'); await Ex.managementReport(ds); done.push('Management report'); await pause(); }
-        if (sel.pivot || sel.survey || sel.overall) { st('Building observation workbook…'); await new Promise(r => setTimeout(r, 30)); const n = await IPR.Obs.exportWorkbook(ds, sel); done.push(n); await pause(); }
+        if (sel.pivot || sel.survey || sel.overall || sel.report || sel.hours || sel.geoinf || sel.geoall || sel.flags || sel.timing || sel.photos || sel.multi) { st('Building observation workbook…'); await new Promise(r => setTimeout(r, 30)); const n = await IPR.Obs.exportWorkbook(ds, sel); done.push(n); await pause(); }
         if (sel.xlsx) { st('Building filtered Excel…'); await new Promise(r => setTimeout(r, 30)); Ex.excel(ds, false); done.push('Filtered Excel'); await pause(); }
         if (sel.csv) { st('Building CSV…'); Ex.csv(ds, false); done.push('Filtered CSV'); }
         st('✓ Done: ' + done.join(' · '));

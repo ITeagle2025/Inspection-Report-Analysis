@@ -45,6 +45,9 @@ IPR.CONFIG = {
   DATE_KEYS: ['scannedAt', 'woDate'],
 
   /* Filter definitions (order = display order). `dim` keys become dictionary-encoded dimensions. */
+  // Observation Report: programs that get an extra Event / Account Site column (Account Site also appears for any program whose rows carry one)
+  EVENT_PROGRAMS: [/PEST SURVEILLANCE/i],
+  SITE_PROGRAMS: [/GOVERNMENT FACILITIES/i],
   PRIMARY_FILTERS: ['scannedAt', 'team', 'program', 'event', 'area', 'sector', 'infestation', 'targetPest'],
   MORE_FILTERS:    ['observation', 'status', 'wo', 'po', 'accountType', 'locationType', 'activityType'],
 

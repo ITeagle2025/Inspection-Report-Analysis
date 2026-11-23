@@ -85,3 +85,28 @@ The screen design is dark/futuristic (logos sit on white plates, unaltered); the
 
 **Performance:** columnar typed arrays; only one page of table rows exists in the DOM; the map renders a few hundred clustered canvas markers instead of 70,000; aggregates are memoised per filter change.
 **Built-in check:** the *Analysis → Data Quality* tab runs a reconciliation (KPI totals = sums of every chart/table) on the current filters; failures are logged to the browser console too.
+
+## v2.0 — Observation Report update
+- Overall Areas, Area 1–5 and Survey tabs (and the Excel sheets) are separated by Program: AREA | SECTOR | [TEAM] | [EVENT for PEST SURVEILLANCE] | [ACCOUNT SITE] | OBSERVATION | VALUE COUNT (sum of "Count" numbers) | INFESTATION COUNT (infested records) | INFESTED TARGET PEST.
+- Programs that get Event / Account Site are set in `js/config.js` (`EVENT_PROGRAMS`, `SITE_PROGRAMS`); Account Site also appears automatically for any program whose rows carry one.
+- Team account details: per sector and day — first scan, last scan, time in sector, gap to the next sector; red "No chemical" (Operation teams only), red "No photos" (all teams) with compiled clickable photos; ✖ for records holding several observations (counted separately and flagged).
+- Excel adds SECTOR TIMING, SECTOR PHOTOS (clickable links) and MULTI-OBSERVATION sheets.
+- Filter dropdowns always open on the top layer.
+
+## v2.1
+- Area 1–5/Survey tabs: Area › Team › Sector (time in sector, per-day first/last scan, gap to next sector, flags) › Observation, no click needed.
+- New last tab "ALL FLAGS". Export list has separate checkboxes: All flags, Sector timing, Sector photos, Multi-observation records.
+
+## v2.2
+- Observation Report group tabs: Program › Area › Team › Sector › Observation; Event / Account Site columns per program; flag summaries per program/area/team; 🗺 Map popup per area and team; Survey has no S1–S8 chips; All Flags without Overlap, team clickable.
+- Excel: Program level + map links, GEOTAGS INFESTED / GEOTAGS ALL sheets (separate checkboxes).
+
+## v2.3
+- Team Map moved into Team account details; map popup has Dark/Light/Street/Satellite and Heatmap views.
+- Excel Area/Survey sheets: Program › Area › Team (small red flag counts, hours) › Observation. New TEAM HOURS sheets.
+- Hours in system = per day first scan → last scan, summed per team.
+
+## v2.4
+- Aedes Aegypti teams are exempt from the No chemical flag. Gap to next sector = next scan (any other sector) after the last scan of the sector, by date and time.
+- Hours in system only on team rows. Excel TEAM HOURS BY SECTOR sheet.
+- All Flags > Overview flags (charts and mistake rates). Overall Areas > Report Style (screen + Excel, one sheet per program).
