@@ -110,3 +110,6 @@ The screen design is dark/futuristic (logos sit on white plates, unaltered); the
 - Aedes Aegypti teams are exempt from the No chemical flag. Gap to next sector = next scan (any other sector) after the last scan of the sector, by date and time.
 - Hours in system only on team rows. Excel TEAM HOURS BY SECTOR sheet.
 - All Flags > Overview flags (charts and mistake rates). Overall Areas > Report Style (screen + Excel, one sheet per program).
+
+## v2.5
+- Hours in system shown per date (red above DUTY_HOURS=8). Flags: Overview flags first, area/team detail first. Report Style split by Event for FARMS AND EZAB, PEST SURVEILLANCE, MOSQUITO ADULT & LARVAE SURVEILLANCE.

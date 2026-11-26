@@ -46,6 +46,9 @@ IPR.CONFIG = {
 
   /* Filter definitions (order = display order). `dim` keys become dictionary-encoded dimensions. */
   // Observation Report: programs that get an extra Event / Account Site column (Account Site also appears for any program whose rows carry one)
+  DUTY_HOURS: 8, // hours per date above this are shown in red
+  // Report Style: programs split into one block per Event
+  REPORT_EVENT_PROGRAMS: [/FARMS AND EZAB/i, /PEST SURVEILLANCE/i, /MOSQUITO ADULT & LARVAE SURVEILLANCE/i],
   EVENT_PROGRAMS: [/PEST SURVEILLANCE/i],
   SITE_PROGRAMS: [/GOVERNMENT FACILITIES/i],
   PRIMARY_FILTERS: ['scannedAt', 'team', 'program', 'event', 'area', 'sector', 'infestation', 'targetPest'],

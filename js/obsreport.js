@@ -111,6 +111,8 @@
     const total = days.reduce((a, x) => a + x.ms, 0); return { days, total, avg: days.length ? total / days.length : 0 };
   }
   Obs.teamHours = teamHours;
+  const DUTY_MS = (IPR.CONFIG.DUTY_HOURS || 8) * 3600000;
+  const hoursCell = H => H.days.map(x => '<div class="hday' + (x.ms > DUTY_MS ? ' over' : '') + '">' + dmy(x.day) + ' · <b>' + hrs(x.ms) + ' h</b></div>').join('') + (H.days.length > 1 ? '<div class="hsum">' + H.days.length + ' days · total ' + hrs(H.total) + ' h</div>' : '');
   const EVENT_RE = (IPR.CONFIG.EVENT_PROGRAMS || [/PEST SURVEILLANCE/i]);
   const SITE_RE = (IPR.CONFIG.SITE_PROGRAMS || [/GOVERNMENT FACILITIES/i]);
   const isEventProg = p => EVENT_RE.some(r => r.test(p));
@@ -176,11 +178,12 @@
   }
 
   /* ---------------------------- Report Style (per program: Area | Sector | Date × observation blocks) ---------------------------- */
+  const REPORT_EV = IPR.CONFIG.REPORT_EVENT_PROGRAMS || [/FARMS AND EZAB/i, /PEST SURVEILLANCE/i, /MOSQUITO ADULT & LARVAE SURVEILLANCE/i];
   const dmy = d => { const x = new Date(d * 86400000); return x.getUTCDate() + '/' + (x.getUTCMonth() + 1) + '/' + x.getUTCFullYear(); };
   function buildReport(ds, rows) {
     const pm = new Map();
     for (const i of rows) {
-      const prog = lab(ds, 'program', i) || '(No program)'; let P = pm.get(prog); if (!P) pm.set(prog, P = { label: prog, obs: new Set(), rows: new Map(), tot: new Map(), value: 0 });
+      const prog = lab(ds, 'program', i) || '(No program)', ev = REPORT_EV.some(r => r.test(prog)) ? (rawVal(ds, 'event', i) || '(No event)') : '', pkey = prog + SEP + ev; let P = pm.get(pkey); if (!P) pm.set(pkey, P = { label: prog, event: ev, title: prog + (ev ? ' › ' + ev : ''), obs: new Set(), rows: new Map(), tot: new Map(), value: 0 });
       const area = lab(ds, 'area', i) || '—', sector = lab(ds, 'sector', i) || '—', k = area + SEP + sector; let R = P.rows.get(k); if (!R) P.rows.set(k, R = { area, sector, days: new Set(), cells: new Map() });
       if (ds.day[i] >= 0) R.days.add(ds.day[i]);
       for (const p of recObs(ds, i).parts) {
@@ -189,7 +192,8 @@
         P.value += p.n;
       }
     }
-    return Array.from(pm.values()).map(P => ({ label: P.label, value: P.value, obs: Array.from(P.obs).sort(natc), tot: P.tot, rows: Array.from(P.rows.values()).sort((a, b) => natc(a.area, b.area) || natc(a.sector, b.sector)) })).sort((a, b) => b.value - a.value);
+    const ptot = new Map(); pm.forEach(P => ptot.set(P.label, (ptot.get(P.label) || 0) + P.value));
+    return Array.from(pm.values()).map(P => ({ label: P.label, event: P.event, title: P.title, ptot: ptot.get(P.label), value: P.value, obs: Array.from(P.obs).sort(natc), tot: P.tot, rows: Array.from(P.rows.values()).sort((a, b) => natc(a.area, b.area) || natc(a.sector, b.sector)) })).sort((a, b) => b.ptot - a.ptot || natc(a.label, b.label) || natc(a.event, b.event));
   }
   const datesOf = R => Array.from(R.days).sort((a, b) => a - b).map(dmy);
   function reportTable(P) {
@@ -201,11 +205,13 @@
   }
   function reportView(el, ds) {
     Obs.rep = buildReport(ds, Array.from(ds.idx));
-    el.insertAdjacentHTML('beforeend', '<p class="csub">Per Program · one row per Area and Sector · dates scanned are stacked in the Date cell · each observation has VALUE COUNT | INFESTATION COUNT | INFESTED TARGET PEST</p>' + (Obs.rep.length ? Obs.rep.map((P, i) => '<section class="psec"><button type="button" class="ptoggle" data-rp="' + i + '"><span class="pname">' + F.esc(P.label) + '</span><span class="pmeta">' + P.rows.length + ' rows · ' + P.obs.length + ' observations · Value Count <b>' + F.int(P.value) + '</b> <i>' + (i === 0 ? '⌃' : '⌄') + '</i></span></button><div class="pbody" id="rp' + i + '"' + (i === 0 ? '' : ' hidden') + '>' + (i === 0 ? reportTable(P) : '') + '</div></section>').join('') : '<p class="muted">No records in the current selection.</p>'));
+    el.insertAdjacentHTML('beforeend', '<p class="csub">Per Program · one row per Area and Sector · dates scanned are stacked in the Date cell · each observation has VALUE COUNT | INFESTATION COUNT | INFESTED TARGET PEST</p>' + (Obs.rep.length ? Obs.rep.map((P, i) => '<section class="psec"><button type="button" class="ptoggle" data-rp="' + i + '"><span class="pname">' + F.esc(P.label) + (P.event ? ' <span class="evtag">› ' + F.esc(P.event) + '</span>' : '') + '</span><span class="pmeta">' + P.rows.length + ' rows · ' + P.obs.length + ' observations · Value Count <b>' + F.int(P.value) + '</b> <i>' + (i === 0 ? '⌃' : '⌄') + '</i></span></button><div class="pbody" id="rp' + i + '"' + (i === 0 ? '' : ' hidden') + '>' + (i === 0 ? reportTable(P) : '') + '</div></section>').join('') : '<p class="muted">No records in the current selection.</p>'));
   }
+  function ovBar(m) { return '<div class="snrow subtabs"><button type="button" data-ov="table"' + (m === 'table' ? ' class="on"' : '') + '>Overall Areas</button><button type="button" data-ov="report"' + (m === 'report' ? ' class="on"' : '') + '>Report Style</button><button type="button" data-ov="gov"' + (m === 'gov' ? ' class="on"' : '') + '>Government Report</button></div>'; }
   function overall(el, ds) {
-    if (Obs.ovMode === 'report') { el.innerHTML = '<div class="snrow subtabs"><button type="button" data-ov="table">Overall Areas</button><button type="button" data-ov="report" class="on">Report Style</button></div>'; return reportView(el, ds); }
-    overallTable(el, ds); el.insertAdjacentHTML('afterbegin', '<div class="snrow subtabs"><button type="button" data-ov="table" class="on">Overall Areas</button><button type="button" data-ov="report">Report Style</button></div>');
+    if (Obs.ovMode === 'gov' && IPR.Gov) { el.innerHTML = ovBar('gov'); return IPR.Gov.view(el, ds); }
+    if (Obs.ovMode === 'report') { el.innerHTML = ovBar('report'); return reportView(el, ds); }
+    overallTable(el, ds); el.insertAdjacentHTML('afterbegin', ovBar('table'));
   }
   function overallTable(el, ds) {
     renderSections(el, ds, Array.from(ds.idx), false, '<div class="chead"><div><h3 class="ctitle">Overall Areas</h3><p class="csub">Separated by Program · Value Count = sum of the “Count” numbers · Infestation Count = infested records (not a sum)</p></div></div>');
@@ -272,11 +278,11 @@
     const nx = (P.hasEvent ? 1 : 0) + (P.hasSite ? 1 : 0), pad = n => '<td></td>'.repeat(n), map = ds.hasCoords;
     const infc = n => n ? '<b class="redtxt">' + F.int(n) + '</b>' : '<span class="muted">0</span>';
     const mb = ref => map ? ' <button class="mapbtn" type="button" data-map="' + ref + '">🗺 Map</button>' : '';
-    let h = '<div class="tablewrap short"><table class="mini obstable htable"><thead><tr><th>Area › Team › Sector › Observation</th>' + (P.hasEvent ? '<th>Event</th>' : '') + (P.hasSite ? '<th>Account Site</th>' : '') + '<th class="num">Value Count</th><th class="num">Infestation Count</th><th>Infested Target Pest</th><th class="num">Hours in system</th><th>Time in sector</th><th>Gap to next sector</th><th>Flags</th></tr></thead><tbody>';
+    let h = '<div class="tablewrap short"><table class="mini obstable htable"><thead><tr><th>Area › Team › Sector › Observation</th>' + (P.hasEvent ? '<th>Event</th>' : '') + (P.hasSite ? '<th>Account Site</th>' : '') + '<th class="num">Value Count</th><th class="num">Infestation Count</th><th>Infested Target Pest</th><th>Hours in system (per date)</th><th>Time in sector</th><th>Gap to next sector</th><th>Flags</th></tr></thead><tbody>';
     P.areas.forEach((A, ai) => {
       h += '<tr class="lv0"><td>' + F.esc(A.label) + mb(pi + '.' + ai) + '</td>' + pad(nx) + '<td class="num">' + F.int(A.value) + '</td><td class="num">' + infc(A.inf) + '</td><td></td><td></td><td></td><td></td><td>' + flHTML(A.fl) + '</td></tr>';
       A.teams.forEach((T, ti) => {
-        h += '<tr class="lv1"><td>' + (canLink ? '<button class="teamlink" type="button" data-team="' + F.esc(T.label) + '" title="Open team details (photos, observations by date)">' + F.esc(T.label) + '</button>' : F.esc(T.label)) + '</td>' + pad(nx) + '<td class="num">' + F.int(T.value) + '</td><td class="num">' + infc(T.inf) + '</td><td></td><td class="num"><b>' + hrs(T.hours.total) + ' h</b></td><td></td><td></td><td>' + flHTML(T.fl) + '</td></tr>';
+        h += '<tr class="lv1"><td>' + (canLink ? '<button class="teamlink" type="button" data-team="' + F.esc(T.label) + '" title="Open team details (photos, observations by date)">' + F.esc(T.label) + '</button>' : F.esc(T.label)) + '</td>' + pad(nx) + '<td class="num">' + F.int(T.value) + '</td><td class="num">' + infc(T.inf) + '</td><td></td><td class="hcell">' + hoursCell(T.hours) + '</td><td></td><td></td><td>' + flHTML(T.fl) + '</td></tr>';
         for (const S of T.sectors) {
           h += '<tr class="lv2"><td>' + F.esc(S.label) + '</td>' + pad(nx) + '<td class="num">' + F.int(S.value) + '</td><td class="num">' + infc(S.inf) + '</td><td>' + (S.inf ? F.esc(pestText(S.pests)) : '') + '</td><td></td><td><b>' + (S.hasTime ? dur(S.time) : '—') + '</b></td><td></td><td>' + secFlHTML(S.fl) + '</td></tr>';
           for (const v of S.visits) h += '<tr class="vday"><td>' + dayText(v.day) + '</td>' + pad(nx) + '<td></td><td></td><td></td><td></td><td>' + (isNaN(v.first) ? '—' : hhmm(v.first) + '–' + hhmm(v.last) + ' · ' + dur(v.last - v.first)) + '</td><td>' + gapText(v) + '</td><td></td></tr>';
@@ -328,29 +334,30 @@
   const FCOL = { chem: '#FF6B3D', photo: '#F5B942', multi: '#8E7CFF' };
   function mkChart(el, id, cfg) { const c = new Chart(el.querySelector('#' + id), cfg); (Obs.charts = Obs.charts || []).push(c); return c; }
   function flagsView(el, ds) {
-    const bar = '<div class="snrow subtabs"><button type="button" data-fm="list" class="' + (Obs.flMode !== 'overview' ? 'on' : '') + '">Flag list</button><button type="button" data-fm="overview" class="' + (Obs.flMode === 'overview' ? 'on' : '') + '">Overview flags</button></div>';
-    if (Obs.flMode === 'overview') { flagOverview(el, ds); el.insertAdjacentHTML('afterbegin', bar); } else { flagList(el, ds); el.insertAdjacentHTML('afterbegin', bar); }
+    const bar = '<div class="snrow subtabs"><button type="button" data-fm="overview" class="' + (Obs.flMode !== 'list' ? 'on' : '') + '">Overview flags</button><button type="button" data-fm="list" class="' + (Obs.flMode === 'list' ? 'on' : '') + '">Flag list</button></div>';
+    if (Obs.flMode !== 'list') { flagOverview(el, ds); el.insertAdjacentHTML('afterbegin', bar); } else { flagList(el, ds); el.insertAdjacentHTML('afterbegin', bar); }
   }
   function flagOverview(el, ds) {
     buildFlags(ds); const st = Obs.flagStats, T = st.total, U2 = IPR.UI;
     const rowsOf = m => Array.from(m, ([k, o]) => ({ k, ...o, tot: o.chem + o.photo + o.multi }));
-    const teams = rowsOf(st.teams).sort((a, b) => b.tot - a.tot).slice(0, 20), areas = rowsOf(st.areas).sort((a, b) => b.tot - a.tot).slice(0, 20), groups = rowsOf(st.groups), days = rowsOf(st.days).filter(x => x.k >= 0).sort((a, b) => a.k - b.k);
-    const worst = rowsOf(st.teams).filter(x => x.visits >= 5).sort((a, b) => b.flagged / b.visits - a.flagged / a.visits).slice(0, 15);
+    const allTeams = rowsOf(st.teams).filter(x => x.tot).sort((a, b) => b.tot - a.tot || b.flagged / b.visits - a.flagged / a.visits), allAreas = rowsOf(st.areas).filter(x => x.tot).sort((a, b) => b.tot - a.tot || b.flagged / b.visits - a.flagged / a.visits);
+    const teams = allTeams.slice(0, 20), areas = allAreas.slice(0, 20), groups = rowsOf(st.groups), days = rowsOf(st.days).filter(x => x.k >= 0).sort((a, b) => a.k - b.k);
     const kp = (l, v, sub, c) => '<div class="ovc"><span>' + l + '</span><b style="color:' + c + '">' + v + '</b><small>' + sub + '</small></div>';
-    el.innerHTML = '<div class="chead"><div><h3 class="ctitle">Overview flags</h3><p class="csub">How often the flags happen — rates use sector visits (a team, a sector, a day) as the base; Multi-observation uses records. “No chemical” excludes Survey and Aedes Aegypti teams.</p></div></div>' +
+    const tbl = (rows, name) => '<div class="tablewrap short"><table class="mini obstable"><thead><tr><th>' + name + '</th><th class="num">Sector visits</th><th class="num">With a flag</th><th class="num">% with a flag</th><th class="num">No chemical</th><th class="num">No photos</th><th class="num">Multi-observation</th></tr></thead><tbody>' + rows.map(x => '<tr><td>' + F.esc(x.k) + '</td><td class="num">' + F.int(x.visits) + '</td><td class="num">' + F.int(x.flagged) + '</td><td class="num"><b class="redtxt">' + pc(x.flagged, x.visits) + '</b></td><td class="num">' + (x.chem ? '<b>' + F.int(x.chem) + '</b> · ' + pc(x.chem, x.elig) : '<span class="muted">0</span>') + '</td><td class="num">' + (x.photo ? '<b>' + F.int(x.photo) + '</b> · ' + pc(x.photo, x.visits) : '<span class="muted">0</span>') + '</td><td class="num">' + (x.multi ? '<b>' + F.int(x.multi) + '</b>' : '<span class="muted">0</span>') + '</td></tr>').join('') + '</tbody></table></div>';
+    el.innerHTML = '<div class="chead"><div><h3 class="ctitle">Overview flags</h3><p class="csub">Rates use sector visits (a team, a sector, a day) as the base; Multi-observation uses records. “No chemical” excludes Survey and Aedes Aegypti teams.</p></div></div>' +
       '<div class="ovk">' + kp('Sector visits checked', F.int(T.visits), F.int(T.records) + ' records', '#fff') + kp('Visits with at least one flag', pc(T.flagged, T.visits), F.int(T.flagged) + ' visits', '#FF8A8A') + kp('No chemical', pc(T.chem, T.elig), F.int(T.chem) + ' of ' + F.int(T.elig) + ' operation visits', FCOL.chem) + kp('No photos', pc(T.photo, T.visits), F.int(T.photo) + ' visits', FCOL.photo) + kp('Multi-observation', pc(T.multi, T.records), F.int(T.multi) + ' of ' + F.int(T.records) + ' records', FCOL.multi) + '</div>' +
-      '<div class="ovgrid"><div class="card ovcard"><h4>Flags by type</h4><div class="ovbox"><canvas id="ovType"></canvas></div></div><div class="card ovcard"><h4>Mistake rate by group (%)</h4><div class="ovbox"><canvas id="ovGroup"></canvas></div></div>' +
-      '<div class="card ovcard wide"><h4>Flags per team — top 20</h4><div class="ovbox tall"><canvas id="ovTeam"></canvas></div></div><div class="card ovcard wide"><h4>Flags per area — top 20</h4><div class="ovbox tall"><canvas id="ovArea"></canvas></div></div><div class="card ovcard wide"><h4>Flags per day</h4><div class="ovbox"><canvas id="ovDay"></canvas></div></div></div>' +
-      '<h4 class="ovh">Mistake rate by group</h4><div class="tablewrap"><table class="mini obstable"><thead><tr><th>Group</th><th class="num">Sector visits</th><th class="num">Visits with a flag</th><th class="num">% with a flag</th><th class="num">No chemical %</th><th class="num">No photos %</th><th class="num">Multi-observation %</th></tr></thead><tbody>' + groups.map(x => '<tr><td>' + F.esc(x.k) + '</td><td class="num">' + F.int(x.visits) + '</td><td class="num">' + F.int(x.flagged) + '</td><td class="num"><b>' + pc(x.flagged, x.visits) + '</b></td><td class="num">' + pc(x.chem, x.elig) + '</td><td class="num">' + pc(x.photo, x.visits) + '</td><td class="num">' + pc(x.multi, x.records) + '</td></tr>').join('') + '</tbody></table></div>' +
-      '<h4 class="ovh">Teams with the highest mistake rate <small>(at least 5 sector visits)</small></h4><div class="tablewrap"><table class="mini obstable"><thead><tr><th>Team</th><th class="num">Sector visits</th><th class="num">% with a flag</th><th class="num">No chemical</th><th class="num">No photos</th><th class="num">Multi-observation</th></tr></thead><tbody>' + worst.map(x => '<tr><td>' + F.esc(x.k) + '</td><td class="num">' + F.int(x.visits) + '</td><td class="num"><b class="redtxt">' + pc(x.flagged, x.visits) + '</b></td><td class="num">' + F.int(x.chem) + '</td><td class="num">' + F.int(x.photo) + '</td><td class="num">' + F.int(x.multi) + '</td></tr>').join('') + '</tbody></table></div>';
+      '<div class="card ovcard wide"><h4>Flags per area — top 20 <small>(' + F.int(allAreas.length) + ' areas have flags)</small></h4><div class="ovbox tall"><canvas id="ovArea"></canvas></div><h4 class="ovh">Area flag details</h4>' + tbl(allAreas, 'Area') + '</div>' +
+      '<div class="card ovcard wide"><h4>Flags per team — top 20 <small>(' + F.int(allTeams.length) + ' teams have flags)</small></h4><div class="ovbox tall"><canvas id="ovTeam"></canvas></div><h4 class="ovh">Team flag details</h4>' + tbl(allTeams, 'Team') + '</div>' +
+      '<div class="ovgrid"><div class="card ovcard"><h4>Flags by type</h4><div class="ovbox"><canvas id="ovType"></canvas></div></div><div class="card ovcard"><h4>Mistake rate by group (%)</h4><div class="ovbox"><canvas id="ovGroup"></canvas></div></div><div class="card ovcard wide"><h4>Flags per day</h4><div class="ovbox"><canvas id="ovDay"></canvas></div></div><div class="card ovcard wide"><h4>Group flag details</h4>' + tbl(groups, 'Group') + '</div></div>';
     const ax = { ticks: { color: U2.muted }, grid: { color: U2.grid } }, leg = { labels: { color: U2.ink, boxWidth: 12 } };
     const short = t => String(t).length > 30 ? String(t).slice(0, 29) + '…' : String(t);
-    const stack = (rows, id, horiz) => mkChart(el, id, { type: 'bar', data: { labels: rows.map(x => short(x.k instanceof Number || typeof x.k === 'number' ? dayText(x.k) : x.k)), datasets: [{ label: 'No chemical', data: rows.map(x => x.chem), backgroundColor: FCOL.chem }, { label: 'No photos', data: rows.map(x => x.photo), backgroundColor: FCOL.photo }, { label: 'Multi-observation', data: rows.map(x => x.multi), backgroundColor: FCOL.multi }] }, options: { indexAxis: horiz ? 'y' : 'x', responsive: true, maintainAspectRatio: false, plugins: { legend: leg }, scales: { x: { ...ax, stacked: true }, y: { ...ax, stacked: true } } } });
+    const ds3 = rows => [{ label: 'No chemical', data: rows.map(x => x.chem), backgroundColor: FCOL.chem }, { label: 'No photos', data: rows.map(x => x.photo), backgroundColor: FCOL.photo }, { label: 'Multi-observation', data: rows.map(x => x.multi), backgroundColor: FCOL.multi }];
+    const stack = (rows, id, horiz) => mkChart(el, id, { type: 'bar', data: { labels: rows.map(x => short(x.k)), datasets: ds3(rows) }, options: { indexAxis: horiz ? 'y' : 'x', responsive: true, maintainAspectRatio: false, plugins: { legend: leg }, scales: { x: { ...ax, stacked: true }, y: { ...ax, stacked: true } } } });
+    stack(areas, 'ovArea', true); stack(teams, 'ovTeam', true);
     mkChart(el, 'ovType', { type: 'doughnut', data: { labels: ['No chemical', 'No photos', 'Multi-observation'], datasets: [{ data: [T.chem, T.photo, T.multi], backgroundColor: [FCOL.chem, FCOL.photo, FCOL.multi], borderColor: '#0A2342' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: leg } } });
     const rate = (a, b) => b ? +(100 * a / b).toFixed(1) : 0;
     mkChart(el, 'ovGroup', { type: 'bar', data: { labels: groups.map(x => x.k), datasets: [{ label: 'No chemical %', data: groups.map(x => rate(x.chem, x.elig)), backgroundColor: FCOL.chem }, { label: 'No photos %', data: groups.map(x => rate(x.photo, x.visits)), backgroundColor: FCOL.photo }, { label: 'Multi-observation %', data: groups.map(x => rate(x.multi, x.records)), backgroundColor: FCOL.multi }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: leg }, scales: { x: ax, y: { ...ax, beginAtZero: true, ticks: { color: U2.muted, callback: v => v + '%' } } } } });
-    stack(teams, 'ovTeam', true); stack(areas, 'ovArea', true);
-    mkChart(el, 'ovDay', { type: 'bar', data: { labels: days.map(x => U.dayLabel ? U.dayLabel(x.k) : dayText(x.k)), datasets: [{ label: 'No chemical', data: days.map(x => x.chem), backgroundColor: FCOL.chem }, { label: 'No photos', data: days.map(x => x.photo), backgroundColor: FCOL.photo }, { label: 'Multi-observation', data: days.map(x => x.multi), backgroundColor: FCOL.multi }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: leg }, scales: { x: { ...ax, stacked: true }, y: { ...ax, stacked: true } } } });
+    mkChart(el, 'ovDay', { type: 'bar', data: { labels: days.map(x => dmy(x.k)), datasets: ds3(days) }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: leg }, scales: { x: { ...ax, stacked: true }, y: { ...ax, stacked: true } } } });
   }
   const FLAG_TYPES = ['No chemical', 'No photos', 'Multi-observation'];
   function buildFlags(ds) {
@@ -422,7 +429,7 @@
     let h = '<div class="detailhead"><div><span class="eyebrow">Team account details</span><h3 class="ctitle big">' + F.esc(teamName) + '</h3><p class="csub">' + sectors.length + ' sector' + (sectors.length === 1 ? '' : 's') + ' · ' + F.int(rows.length) + ' team records · ' + F.esc(areas.join(', ')) + '</p></div><div class="dbtns">' + (ds.hasCoords ? '<button class="btn small" type="button" data-mapteam="1">🗺 Map</button>' : '') + '<button class="btn ghost small" type="button" data-back="1">← Back to teams</button></div></div>';
     Obs.teamRows = rows; Obs.teamTitle = g.label + ' › ' + teamName;
     const th = teamHours(ds, rows);
-    h += '<div class="sinfo hoursbox"><span>Hours in system: <b>' + hrs(th.total) + ' h</b> over ' + th.days.length + ' day' + (th.days.length === 1 ? '' : 's') + ' · average <b>' + hrs(th.avg) + ' h/day</b> <small>(first scan → last scan of each day)</small></span></div><details class="photos"><summary>Hours per day</summary><table class="mini obstable"><thead><tr><th>Date</th><th>First scan</th><th>Last scan</th><th class="num">Hours</th></tr></thead><tbody>' + th.days.map(x => '<tr><td>' + dayText(x.day) + '</td><td>' + hhmm(x.first) + '</td><td>' + hhmm(x.last) + '</td><td class="num">' + hrs(x.ms) + '</td></tr>').join('') + '</tbody></table></details>';
+    h += '<div class="sinfo hoursbox"><span>Hours in system: <b>' + hrs(th.total) + ' h</b> over ' + th.days.length + ' day' + (th.days.length === 1 ? '' : 's') + ' · average <b>' + hrs(th.avg) + ' h/day</b> <small>(first scan → last scan of each day)</small></span></div><details class="photos" open><summary>Hours per date (red = more than the ' + (IPR.CONFIG.DUTY_HOURS || 8) + '-hour duty)</summary><table class="mini obstable"><thead><tr><th>Date</th><th>First scan</th><th>Last scan</th><th class="num">Hours</th></tr></thead><tbody>' + th.days.map(x => '<tr><td>' + dayText(x.day) + '</td><td>' + hhmm(x.first) + '</td><td>' + hhmm(x.last) + '</td><td class="num' + (x.ms > DUTY_MS ? ' redtxt' : '') + '">' + hrs(x.ms) + '</td></tr>').join('') + '</tbody></table></details>';
     sectors.forEach((s, si) => {
       const vs = bySector.get(s).sort((a, b) => a.day - b.day || a.first - b.first), srows = [].concat(...vs.map(v => v.rows));
       const agg = { inf: 0, pests: new Map(), chem: 0, photoRecs: 0, photos: [], multi: [], op: vs[0].op };
@@ -516,8 +523,8 @@
   function hierSheet(wb, ds, name, rows, title) {
     const ws = wb.addWorksheet(name.slice(0, 31)), hier = buildHier(ds, rows), anyEv = hier.some(p => p.hasEvent), anySite = hier.some(p => p.hasSite);
     ws.getCell('A1').value = title; ws.getCell('A1').font = { bold: true, size: 14, color: { argb: 'FF183B68' } };
-    const hr = ws.getRow(3); ['Program › Area › Team › Observation', 'Event', 'Account Site', 'Value Count', 'Infestation Count', 'Infested Target Pest', 'Hours in system', 'Flags', 'Map (centre of infestations)'].forEach((h, k) => hr.getCell(k + 1).value = h); styleHeader(hr);
-    [64, anyEv ? 34 : 3, anySite ? 34 : 3, 13, 16, 36, 14, 52, 26].forEach((w, k) => ws.getColumn(k + 1).width = w);
+    const hr = ws.getRow(3); ['Program › Area › Team › Observation', 'Event', 'Account Site', 'Value Count', 'Infestation Count', 'Infested Target Pest', 'Hours in system (per date)', 'Flags', 'Map (centre of infestations)'].forEach((h, k) => hr.getCell(k + 1).value = h); styleHeader(hr);
+    [64, anyEv ? 34 : 3, anySite ? 34 : 3, 13, 16, 36, 30, 52, 26].forEach((w, k) => ws.getColumn(k + 1).width = w);
     let r = 4;
     const SMALLRED = { size: 8, color: { argb: 'FFB3261E' } };
     const put = (vals, style, indent) => { const row = ws.getRow(r++); vals.forEach((v, k) => { const c = row.getCell(k + 1); c.value = v; if (style.font) c.font = style.font; if (style.fill) c.fill = style.fill; if (k === 0) c.alignment = { indent }; if (k === 3 || k === 4) { c.numFmt = '#,##0'; c.alignment = { horizontal: 'right' }; } if (k === 6) { c.numFmt = '0.0'; c.alignment = { horizontal: 'right' }; } }); return row; };
@@ -529,7 +536,7 @@
       for (const A of P.areas) {
         const ar = put([A.label, '', '', A.value, A.inf, '', '', flSummary(A.fl).join(' · '), ''], BAND[1], 1); flagCell(ar); mapCell(ar, A.rows);
         for (const T of A.teams) {
-          const tr = put([T.label, '', '', T.value, T.inf, '', +(T.hours.total / 3600000).toFixed(1), flSummary(T.fl).join(' · '), ''], BAND[2], 2); flagCell(tr); mapCell(tr, T.rows);
+          const tr = put([T.label, '', '', T.value, T.inf, '', T.hours.days.map(x => dmy(x.day) + ': ' + hrs(x.ms) + ' h').join('\n') + (T.hours.days.length > 1 ? '\nTotal: ' + hrs(T.hours.total) + ' h (' + T.hours.days.length + ' days)' : ''), flSummary(T.fl).join(' · '), ''], BAND[2], 2); flagCell(tr); tr.getCell(7).alignment = { wrapText: true, vertical: 'top', horizontal: 'left' }; tr.height = 14 * (T.hours.days.length + (T.hours.days.length > 1 ? 1 : 0) || 1); if (T.hours.days.some(x => x.ms > DUTY_MS)) tr.getCell(7).font = RED.font; mapCell(tr, T.rows);
           const om = new Map();
           for (const S of T.sectors) for (const o of S.obs) { const k = [o.event, o.site, o.label].join(SEP); let x = om.get(k); if (!x) om.set(k, x = { label: o.label, event: o.event, site: o.site, value: 0, inf: 0, pests: new Map(), multi: 0 }); x.value += o.value; x.inf += o.inf; x.multi += o.multi; o.pests.forEach((c, pp) => x.pests.set(pp, (x.pests.get(pp) || 0) + c)); }
           Array.from(om.values()).sort((x, y) => y.value - x.value || x.label.localeCompare(y.label)).forEach(o => { const row = put([o.label + (o.multi ? '  ✖ ' + o.multi : ''), o.event, o.site, o.value, o.inf, o.inf ? pestText(o.pests) : '', '', '', ''], { font: { size: 10, color: { argb: 'FF26364B' } } }, 3); if (o.multi) row.getCell(1).font = RED.font; if (o.inf) row.getCell(5).font = RED.font; });
@@ -540,21 +547,26 @@
   }
   function reportSheets(wb, ds) {
     const used = new Set(), prs = buildReport(ds, Array.from(ds.idx)), thin = { style: 'thin', color: { argb: 'FF222222' } }, bd = { top: thin, left: thin, bottom: thin, right: thin };
-    for (const P of prs) {
-      let nm = ('RS ' + P.label.replace(/^SCH\.?\s*(PUBLIC\s+)?(TREATMENT\s+)?SERVICE\s+FOR\s+/i, '').replace(/[\\/?*\[\]:]/g, ' ')).slice(0, 31), n = 2; while (used.has(nm.toLowerCase())) nm = nm.slice(0, 28) + ' ' + n++; used.add(nm.toLowerCase());
-      const ws = wb.addWorksheet(nm, { views: [{ state: 'frozen', xSplit: 3, ySplit: 4 }] }), nc = 3 + P.obs.length * 3;
-      ws.mergeCells(1, 1, 1, Math.max(nc, 4)); const t = ws.getCell(1, 1); t.value = P.label + '  —  Report Style'; t.font = { bold: true, size: 15, color: { argb: 'FFFFFFFF' } }; t.fill = fill('FF1F3864'); t.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 }; ws.getRow(1).height = 28;
-      ['Area Name', 'Sector', 'Date'].forEach((h, k) => { ws.mergeCells(3, k + 1, 4, k + 1); const c = ws.getCell(3, k + 1); c.value = h; c.font = { bold: true, size: 11 }; c.fill = fill('FF9DC3E6'); c.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true }; c.border = bd; ws.getCell(4, k + 1).border = bd; });
+    const byProg = new Map(); prs.forEach(P => (byProg.get(P.label) || byProg.set(P.label, []).get(P.label)).push(P));
+    for (const [prog, blocks] of byProg) {
+      let nm = ('RS ' + prog.replace(/^SCH\.?\s*(PUBLIC\s+)?(TREATMENT\s+)?SERVICE\s+FOR\s+/i, '').replace(/[\\/?*\[\]:]/g, ' ')).slice(0, 31), n = 2; while (used.has(nm.toLowerCase())) nm = nm.slice(0, 28) + ' ' + n++; used.add(nm.toLowerCase());
+      const ws = wb.addWorksheet(nm, { views: [{ state: 'frozen', xSplit: 3 }] }), maxObs = Math.max(...blocks.map(B => B.obs.length)), nc = Math.max(3 + maxObs * 3, 4);
+      ws.mergeCells(1, 1, 1, nc); const t = ws.getCell(1, 1); t.value = prog + '  —  Report Style'; t.font = { bold: true, size: 15, color: { argb: 'FFFFFFFF' } }; t.fill = fill('FF1F3864'); t.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 }; ws.getRow(1).height = 28;
       ws.getColumn(1).width = 28; ws.getColumn(2).width = 18; ws.getColumn(3).width = 14;
-      P.obs.forEach((o, k) => { const c0 = 4 + k * 3; ws.mergeCells(3, c0, 3, c0 + 2); const g = ws.getCell(3, c0); g.value = o; g.font = { bold: true, size: 11 }; g.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }; g.border = bd; for (let q = 0; q < 3; q++) ws.getCell(3, c0 + q).border = bd;
-        ['VALUE COUNT', 'INFESTATION COUNT', 'INFESTED TARGET PEST'].forEach((h, q) => { const c = ws.getCell(4, c0 + q); c.value = h; c.font = { bold: true, size: 9 }; c.fill = fill('FF36C0CC'); c.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }; c.border = bd; });
-        ws.getColumn(c0).width = 12; ws.getColumn(c0 + 1).width = 14; ws.getColumn(c0 + 2).width = 26; });
-      ws.getRow(3).height = 34; ws.getRow(4).height = 30;
-      let r = 5;
-      const line = (vals, bold) => { const row = ws.getRow(r++); vals.forEach((v, k) => { const c = row.getCell(k + 1); c.value = v; c.border = bd; c.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }; c.font = { size: 10, bold: !!bold }; if (k >= 3 && (k - 3) % 3 === 1) { c.fill = fill('FFE0F6F8'); } }); return row; };
-      const vals = c => c ? [c.value, c.inf || '', c.inf ? pestText(c.pests) : ''] : ['', '', ''];
-      for (const R of P.rows) { const ds2 = datesOf(R), row = line([R.area, R.sector, ds2.join('\n')].concat(...P.obs.map(o => vals(R.cells.get(o))))); row.height = Math.max(16, 14 * Math.max(1, ds2.length)); }
-      const tr = line(['TOTAL', '', ''].concat(...P.obs.map(o => vals(P.tot.get(o)))), true); tr.eachCell(c => { c.fill = fill('FF9DC3E6'); });
+      for (let k = 0; k < maxObs; k++) { ws.getColumn(4 + k * 3).width = 12; ws.getColumn(5 + k * 3).width = 14; ws.getColumn(6 + k * 3).width = 26; }
+      let r = 3;
+      for (const P of blocks) {
+        if (P.event) { ws.mergeCells(r, 1, r, Math.max(3 + P.obs.length * 3, 4)); const e = ws.getCell(r, 1); e.value = 'EVENT: ' + P.event; e.font = { bold: true, size: 12, color: { argb: 'FF1F3864' } }; e.fill = fill('FFD9E5F5'); e.alignment = { vertical: 'middle', indent: 1 }; ws.getRow(r).height = 22; r++; }
+        const h1 = r, h2 = r + 1;
+        ['Area Name', 'Sector', 'Date'].forEach((h, k) => { ws.mergeCells(h1, k + 1, h2, k + 1); const c = ws.getCell(h1, k + 1); c.value = h; c.font = { bold: true, size: 11 }; c.fill = fill('FF9DC3E6'); c.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true }; c.border = bd; ws.getCell(h2, k + 1).border = bd; });
+        P.obs.forEach((o, k) => { const c0 = 4 + k * 3; ws.mergeCells(h1, c0, h1, c0 + 2); const g = ws.getCell(h1, c0); g.value = o; g.font = { bold: true, size: 11 }; g.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }; for (let q = 0; q < 3; q++) ws.getCell(h1, c0 + q).border = bd;
+          ['VALUE COUNT', 'INFESTATION COUNT', 'INFESTED TARGET PEST'].forEach((h, q) => { const c = ws.getCell(h2, c0 + q); c.value = h; c.font = { bold: true, size: 9 }; c.fill = fill('FF36C0CC'); c.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }; c.border = bd; }); });
+        ws.getRow(h1).height = 34; ws.getRow(h2).height = 30; r = h2 + 1;
+        const line = (vals, bold) => { const row = ws.getRow(r++); vals.forEach((v, k) => { const c = row.getCell(k + 1); c.value = v; c.border = bd; c.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }; c.font = { size: 10, bold: !!bold }; if (k >= 3 && (k - 3) % 3 === 1) c.fill = fill('FFE0F6F8'); }); return row; };
+        const vals = c => c ? [c.value, c.inf || '', c.inf ? pestText(c.pests) : ''] : ['', '', ''];
+        for (const R of P.rows) { const ds2 = datesOf(R), row = line([R.area, R.sector, ds2.join('\n')].concat(...P.obs.map(o => vals(R.cells.get(o))))); row.height = Math.max(16, 14 * Math.max(1, ds2.length)); }
+        const tr = line(['TOTAL', '', ''].concat(...P.obs.map(o => vals(P.tot.get(o)))), true); tr.eachCell(c => { c.fill = fill('FF9DC3E6'); }); r += 2;
+      }
     }
   }
   function hoursSheets(wb, ds, groups) {

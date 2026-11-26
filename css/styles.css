@@ -328,3 +328,32 @@ table.rtable td.rinf { background: #E0F6F8; } td.rdate { white-space: pre-line; 
 table.rtable .c1, table.rtable .c2, table.rtable .c3 { position: sticky; background: #fff; z-index: 2; } table.rtable th.rleft.c1, table.rtable th.rleft.c2, table.rtable th.rleft.c3 { background: #9DC3E6; z-index: 6; }
 table.rtable .c1 { left: 0; min-width: 150px; font-weight: 700; } table.rtable .c2 { left: 150px; min-width: 110px; } table.rtable .c3 { left: 260px; min-width: 100px; }
 table.rtable tr.rtot td { background: #9DC3E6; font-weight: 700; }
+
+.hcell { min-width: 150px; white-space: nowrap; } .hday { font-size: 12px; } .hday.over, .hday.over b { color: #FF6B6B; } .hsum { font-size: 11px; color: var(--muted); margin-top: 2px; border-top: 1px dashed var(--line); padding-top: 2px; }
+.evtag { color: var(--teal); font-weight: 600; }
+
+/* ---- Government Report (Observation Report > Overall Areas) ---- */
+.gv-filters,.gv-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0}
+.gv-warn{background:rgba(242,184,75,.12);border-left:4px solid var(--warn);padding:6px 10px;border-radius:4px;font-size:12.5px;margin:6px 0}
+.gvms{position:relative}.gvn{background:rgba(28,200,216,.25);border-radius:9px;padding:0 6px;font-size:11.5px;margin-left:2px}
+.gvpn{position:absolute;z-index:30;top:100%;left:0;margin-top:4px;width:300px;background:#071A33;border:1px solid var(--line2);border-radius:10px;padding:8px;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+.gvpn input[type=text]{width:100%;padding:6px 8px;border:1px solid var(--line2);border-radius:6px;background:rgba(3,14,28,.8);color:var(--ink)}
+.gvac{display:flex;gap:12px;margin:6px 0;font-size:12px}.gvac a{color:var(--teal);cursor:pointer;text-decoration:underline}
+.gvls{max-height:240px;overflow:auto}.gvls label{display:flex;gap:8px;padding:4px 2px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--line)}
+.gv-wrap{overflow:auto;max-height:calc(100vh - 260px);border:2px solid var(--line2);border-radius:10px;background:#fff}
+table.gvt{border-collapse:separate;border-spacing:0;min-width:100%;font-size:12px;text-align:center;color:#0b1320;background:#fff}
+table.gvt th,table.gvt td{border-right:1px solid #b7c8ce;border-bottom:1px solid #b7c8ce;padding:7px 9px;min-width:62px}
+table.gvt th{background:#0890A0;color:#fff;font-weight:600;position:sticky;z-index:3;vertical-align:middle}
+table.gvt thead tr:first-child th{top:0;z-index:4}table.gvt th.s{background:#8fb8e0;color:#0b1320;font-size:14px;border-bottom:2px solid #6f8d97}
+table.gvt thead tr:nth-child(2) th{border-bottom:2px solid #6f8d97}
+table.gvt .sb{border-left:3px solid #6f8d97}table.gvt tbody tr:nth-child(even) td{background:#f3f9fa}table.gvt tbody tr:hover td{background:#d9edf1}
+table.gvt td.l{text-align:left;min-width:150px;max-width:260px}table.gvt td.t{text-align:left;color:#0b7285;font-size:11px;min-width:110px}table.gvt td.d{white-space:nowrap}
+table.gvt tr.tot td{font-weight:700;background:#d9edf1!important;border-top:2px solid #6f8d97}
+table.gvt .inf{color:#d33;font-weight:700}.fl{color:#d33;font-size:10px;font-weight:600;white-space:nowrap}
+table.gvt a.sl{color:#0b7285;cursor:pointer;text-decoration:underline}table.gvt .nb{background:#fff;color:#0b7285;border:1px solid #0b7285;border-radius:6px;padding:3px 9px;font-size:12px;cursor:pointer}
+.modalbox.gvbox{width:min(780px,96vw);padding:0;overflow:hidden}.gvm-h{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 14px;background:#0A6FB5;color:#fff}
+.gvm-b{padding:12px 14px;overflow:auto;max-height:calc(90vh - 56px)}
+.gvdt{font-size:15px;font-weight:700;background:rgba(28,200,216,.16);padding:6px 10px;border-left:4px solid var(--teal);margin:14px 0 6px}.gvtm{margin:4px 0 8px;color:var(--muted)}
+.gvdtb{width:100%;border-collapse:collapse;font-size:13px}.gvdtb th,.gvdtb td{border:1px solid var(--line2);padding:5px 8px;text-align:left}.gvdtb th{background:rgba(28,200,216,.16)}
+.gvph{margin:8px 0}.gvph summary{cursor:pointer;color:var(--teal);font-weight:600}.gvph img{max-width:100%;max-height:260px;margin:4px 0;border:1px solid var(--line2);border-radius:4px}
+.gvc{font-weight:600;margin:10px 0 4px}.gvc small{color:var(--muted);font-weight:400}.gvnt{border:1px solid var(--line2);border-radius:6px;padding:6px 9px;margin:4px 0;font-size:13px}.gvnt.i{border-left:4px solid var(--alert)}.gvnt em{color:var(--muted);font-style:normal}
